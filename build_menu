@@ -14,9 +14,11 @@ export PATH=$PARENT_DIR/clang-r416183b/bin:$PATH
 export PATH=$PARENT_DIR/build-tools/path/linux-x86:$PATH
 export PATH=$PARENT_DIR/gas/linux-x86:$PATH
 export TARGET_SOC=s5e9925
-export LLVM=1 LLVM_IAS=1
+export LLVM=1
+export LLVM_IAS=1
 export ARCH=arm64
-KERNEL_MAKE_ENV="LOCALVERSION=-RealKing"
+export USE_CCACHE=1
+KERNEL_MAKE_ENV="CONFIG_DEFAULT_HOSTNAME= CONFIG_LOCALVERSION= LOCALVERSION=-Android12-9-$(date +%Y%m%d) CONFIG_LTO_CLANG=y CONFIG_LTO_NONE=n CONFIG_LTO_CLANG_THIN=y CONFIG_LTO_CLANG_FULL=n CONFIG_LOCALVERSION_AUTO=n"
 
 # Color
 ON_BLUE=`echo -e "\033[44m"`	# On Blue
@@ -28,13 +30,13 @@ STD=`echo -e "\033[0m"`		# Text Clear
  
 # Functions
 pause(){
-  read -p "${RED}$2${STD}Press ${BLUE}[Enter]${STD} key to $1..." fackEnterKey
+  read -p "${RED}$2${STD}Press ${BLUE}[Enter]${STD} key to $1..."
 }
 
 clang(){
   if [ ! -d $PARENT_DIR/clang-r416183b ]; then
     pause 'clone Android Clang/LLVM Prebuilts'
-    git clone https://github.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r416183b $PARENT_DIR/clang-r416183b
+    git clone https://github.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r416183b $PARENT_DIR/clang-r416183b --depth=1
     . $DIR/build_menu
   fi
 }
@@ -42,7 +44,7 @@ clang(){
 gas(){
   if [ ! -d $PARENT_DIR/gas/linux-x86 ]; then
     pause 'clone prebuilt binaries of GNU `as` (the assembler)'
-    git clone https://android.googlesource.com/platform/prebuilts/gas/linux-x86 $PARENT_DIR/gas/linux-x86
+    git clone https://android.googlesource.com/platform/prebuilts/gas/linux-x86 $PARENT_DIR/gas/linux-x86 --depth=1
     . $DIR/build_menu
   fi
 }
@@ -50,7 +52,7 @@ gas(){
 build_tools(){
   if [ ! -d $PARENT_DIR/build-tools ]; then
     pause 'clone prebuilt binaries of build tools'
-    git clone https://android.googlesource.com/platform/prebuilts/build-tools $PARENT_DIR/build-tools
+    git clone https://android.googlesource.com/platform/prebuilts/build-tools $PARENT_DIR/build-tools --depth=1
     . $DIR/build_menu
   fi
 }
@@ -88,11 +90,13 @@ clean(){
 }
 
 build_kernel(){
-  variant
+  # variant
   echo "${GREEN}***** Compiling kernel *****${STD}"
   [ ! -d "out" ] && mkdir out
-  make -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV release_defconfig
-  make -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV
+  make CC="ccache clang" CXX="ccache clang++" -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV gki_defconfig
+#  make -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV menuconfig
+#  make -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV savedefconfig
+  make CC="ccache clang" CXX="ccache clang++" -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV
 
   [ -e arch/arm64/boot/Image.gz ] && cp arch/arm64/boot/Image.gz $(pwd)/out/Image.gz
   if [ -e arch/arm64/boot/Image ]; then
@@ -108,7 +112,7 @@ build_kernel(){
 anykernel3(){
   if [ ! -d $PARENT_DIR/AnyKernel3 ]; then
     pause 'clone AnyKernel3 - Flashable Zip Template'
-    git clone https://github.com/osm0sis/AnyKernel3 $PARENT_DIR/AnyKernel3
+    git clone https://github.com/osm0sis/AnyKernel3 $PARENT_DIR/AnyKernel3 --depth=1
   fi
   variant
   if [ -e $DIR/arch/arm64/boot/Image ]; then
