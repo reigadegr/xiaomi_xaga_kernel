@@ -18,7 +18,7 @@ export LLVM=1
 export LLVM_IAS=1
 export ARCH=arm64
 export USE_CCACHE=1
-KERNEL_MAKE_ENV="CONFIG_DEFAULT_HOSTNAME= CONFIG_LOCALVERSION= LOCALVERSION=-Android12-9-$(date +%Y%m%d) CONFIG_LTO_CLANG=y CONFIG_LTO_NONE=n CONFIG_LTO_CLANG_THIN=y CONFIG_LTO_CLANG_FULL=n CONFIG_LOCALVERSION_AUTO=n"
+KERNEL_MAKE_ENV="LOCALVERSION=-Android12-9-v$(date +%Y%m%d) CONFIG_LTO_CLANG=y CONFIG_LTO_NONE=n CONFIG_LTO_CLANG_THIN=y CONFIG_LTO_CLANG_FULL=n CONFIG_LOCALVERSION_AUTO=n"
 
 # Color
 ON_BLUE=`echo -e "\033[44m"`	# On Blue
@@ -94,7 +94,7 @@ build_kernel(){
   echo "${GREEN}***** Compiling kernel *****${STD}"
   [ ! -d "out" ] && mkdir out
   make CC="ccache clang" CXX="ccache clang++" -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV gki_defconfig
-#  make -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV menuconfig
+  make -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV menuconfig
 #  make -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV savedefconfig
   make CC="ccache clang" CXX="ccache clang++" -j$(nproc) -C $(pwd) $KERNEL_MAKE_ENV
 
