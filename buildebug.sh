@@ -1,9 +1,8 @@
+#!/bin/bash
 DIR=`readlink -f .`
 MAIN=`readlink -f ${DIR}/..`
 export CLANG_PATH=$MAIN/clang-r416183b/bin
 export PATH=${BINUTILS_PATH}:${CLANG_PATH}:${PATH}
-make -j8 CC='ccache clang' ARCH=arm64 LLVM=1 LLVM_IAS=1 O=out gki_defconfig
-#!/bin/bash
 # Resources
 THREAD="-j$(nproc --all)"
 
@@ -21,10 +20,10 @@ ZIMAGE_DIR="$KERNEL_DIR/out/arch/arm64/boot"
 # Vars
 export ARCH=arm64
 export SUBARCH=$ARCH
-export KBUILD_BUILD_USER=Rohail
+export KBUILD_BUILD_USER=ferstar
+export KBUILD_BUILD_HOST=xaga-arm64
 
 DATE_START=$(date +"%s")
-curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
 
 echo  "DEFCONFIG SET TO $DEFCONFIG"
 echo "-------------------"
@@ -33,7 +32,10 @@ echo "-------------------"
 echo
 
 make CC="ccache clang" CXX="ccache clang++" LLVM=1 LLVM_IAS=1 O=out $DEFCONFIG
+make CC="ccache clang" CXX="ccache clang++" LLVM=1 LLVM_IAS=1 O=out menuconfig
 make CC='ccache clang' CXX="ccache clang++" LLVM=1 LLVM_IAS=1 O=out $THREAD \
+    LOCALVERSION=-Android12-9-v$(date +%Y%m%d-%H) \
+    CONFIG_LOCALVERSION_AUTO=n \
     CONFIG_MEDIATEK_CPUFREQ_DEBUG=m CONFIG_MTK_IPI=m CONFIG_MTK_TINYSYS_MCUPM_SUPPORT=m \
     CONFIG_MTK_MBOX=m CONFIG_RPMSG_MTK=m CONFIG_LTO_CLANG=y CONFIG_LTO_NONE=n \
     CONFIG_LTO_CLANG_THIN=y CONFIG_LTO_CLANG_FULL=n 2>&1 | tee kernel.log
@@ -52,7 +54,6 @@ ls -a $ZIMAGE_DIR
 
 cd $KERNEL_DIR
 
-TIME="$(date "+%Y%m%d-%H%M%S")"
 mkdir -p tmp
 cp -fp $ZIMAGE_DIR/Image.gz tmp
 cp -rp ./anykernel/* tmp
@@ -60,10 +61,5 @@ cd tmp
 7za a -mx9 tmp.zip *
 cd ..
 rm *.zip
-cp -fp tmp/tmp.zip RealKing_xiaomi_xaga-$TIME.zip
+cp -fp tmp/tmp.zip Android12-5.10.66-v$(date +%Y%m%d-%H).zip
 rm -rf tmp
-echo $TIME
-
-git checkout drivers/Makefile &>/dev/null
-rm -rf KernelSU
-rm -rf drivers/kernelsu
