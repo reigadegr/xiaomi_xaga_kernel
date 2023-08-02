@@ -61,5 +61,5 @@ cd tmp
 7za a -mx9 tmp.zip *
 cd ..
 rm *.zip
-cp -fp tmp/tmp.zip Android12-5.10.66-v$(date +%Y%m%d-%H).zip
+cp -fp tmp/tmp.zip Android12-$(grep "# Linux/" out/.config | cut -d " " -f 3)-v$(date +%Y%m%d-%H).zip
 rm -rf tmp
