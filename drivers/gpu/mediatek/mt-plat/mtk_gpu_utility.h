@@ -105,7 +105,7 @@ void mtk_notify_gpu_power_change(int power_on);
 
 bool mtk_notify_gpu_freq_change(u32 clk_idx, u32 gpufreq);
 
-void mtk_gpu_fence_debug_dump(int fd, int pid, int type, int timeouts);
+void mtk_gpu_fence_debug_dump(int fd, int pid, int type);
 #ifdef __cplusplus
 }
 #endif
