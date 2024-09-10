@@ -469,11 +469,7 @@ void mark_page_accessed(struct page *page)
 {
 	page = compound_head(page);
 
-	if (lru_gen_enabled()) {
-		page_inc_refs(page);
-		return;
-	}
-
+	trace_android_vh_mark_page_accessed(page);
 	if (!PageReferenced(page)) {
 		SetPageReferenced(page);
 	} else if (PageUnevictable(page)) {

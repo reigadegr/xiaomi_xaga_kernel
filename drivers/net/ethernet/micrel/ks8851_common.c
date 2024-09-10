@@ -363,16 +363,18 @@ static irqreturn_t ks8851_irq(int irq, void *_ks)
 		handled |= IRQ_RXPSI;
 
 	if (status & IRQ_TXI) {
-		handled |= IRQ_TXI;
-
-		/* no lock here, tx queue should have been stopped */
-
-		/* update our idea of how much tx space is available to the
-		 * system */
-		ks->tx_space = ks8851_rdreg16(ks, KS_TXMIR);
+		unsigned short tx_space = ks8851_rdreg16(ks, KS_TXMIR);
 
 		netif_dbg(ks, intr, ks->netdev,
-			  "%s: txspace %d\n", __func__, ks->tx_space);
+			  "%s: txspace %d\n", __func__, tx_space);
+
+		spin_lock(&ks->statelock);
+		ks->tx_space = tx_space;
+		if (netif_queue_stopped(ks->netdev))
+			netif_wake_queue(ks->netdev);
+		spin_unlock(&ks->statelock);
+
+		handled |= IRQ_TXI;
 	}
 
 	if (status & IRQ_RXI)
@@ -414,9 +416,6 @@ static irqreturn_t ks8851_irq(int irq, void *_ks)
 
 	if (status & IRQ_LCI)
 		mii_check_link(&ks->mii);
-
-	if (status & IRQ_TXI)
-		netif_wake_queue(ks->netdev);
 
 	return IRQ_HANDLED;
 }
@@ -501,6 +500,8 @@ static int ks8851_net_open(struct net_device *dev)
 	ks8851_wrreg16(ks, KS_ISR, ks->rc_ier);
 	ks8851_wrreg16(ks, KS_IER, ks->rc_ier);
 
+	ks->queued_len = 0;
+	ks->tx_space = ks8851_rdreg16(ks, KS_TXMIR);
 	netif_start_queue(ks->netdev);
 
 	netif_dbg(ks, ifup, ks->netdev, "network device up\n");
@@ -1031,6 +1032,7 @@ int ks8851_suspend(struct device *dev)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ks8851_suspend);
 
 int ks8851_resume(struct device *dev)
 {
@@ -1044,6 +1046,7 @@ int ks8851_resume(struct device *dev)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ks8851_resume);
 #endif
 
 int ks8851_probe_common(struct net_device *netdev, struct device *dev,
@@ -1055,7 +1058,6 @@ int ks8851_probe_common(struct net_device *netdev, struct device *dev,
 	int ret;
 
 	ks->netdev = netdev;
-	ks->tx_space = 6144;
 
 	gpio = of_get_named_gpio_flags(dev->of_node, "reset-gpios", 0, NULL);
 	if (gpio == -EPROBE_DEFER)
@@ -1175,6 +1177,7 @@ err_reg:
 err_reg_io:
 	return ret;
 }
+EXPORT_SYMBOL_GPL(ks8851_probe_common);
 
 int ks8851_remove_common(struct device *dev)
 {
@@ -1191,3 +1194,8 @@ int ks8851_remove_common(struct device *dev)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ks8851_remove_common);
+
+MODULE_DESCRIPTION("KS8851 Network driver");
+MODULE_AUTHOR("Ben Dooks <ben@simtec.co.uk>");
+MODULE_LICENSE("GPL");

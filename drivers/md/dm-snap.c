@@ -685,8 +685,10 @@ static void dm_exception_table_exit(struct dm_exception_table *et,
 	for (i = 0; i < size; i++) {
 		slot = et->table + i;
 
-		hlist_bl_for_each_entry_safe(ex, pos, n, slot, hash_list)
+		hlist_bl_for_each_entry_safe(ex, pos, n, slot, hash_list) {
 			kmem_cache_free(mem, ex);
+			cond_resched();
+		}
 	}
 
 	vfree(et->table);
@@ -1117,7 +1119,8 @@ static void snapshot_merge_next_chunks(struct dm_snapshot *s)
 	for (i = 0; i < linear_chunks; i++)
 		__check_for_conflicting_io(s, old_chunk + i);
 
-	dm_kcopyd_copy(s->kcopyd_client, &src, 1, &dest, 0, merge_callback, s);
+	dm_kcopyd_copy(s->kcopyd_client, &src, 1, &dest, 1 << DM_KCOPYD_SNAP_MERGE,
+		       merge_callback, s);
 	return;
 
 shut:

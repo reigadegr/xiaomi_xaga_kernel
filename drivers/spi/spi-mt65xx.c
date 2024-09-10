@@ -881,7 +881,7 @@ static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 	else
 		mdata->state = MTK_SPI_IDLE;
 
-	if (!master->can_dma(master, master->cur_msg->spi, trans)) {
+	if (!master->can_dma(master, NULL, trans)) {
 		if (trans->rx_buf) {
 			cnt = mdata->xfer_len / 4;
 			ioread32_rep(mdata->base + SPI_RX_DATA_REG,
@@ -916,8 +916,8 @@ static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 			if (remainder > 0) {
 				reg_val = 0;
 				memcpy(&reg_val,
-				trans->tx_buf + (cnt * 4) + mdata->num_xfered,
-				remainder);
+					trans->tx_buf + (cnt * 4) + mdata->num_xfered,
+					remainder);
 				writel(reg_val, mdata->base + SPI_TX_DATA_REG);
 			}
 		}

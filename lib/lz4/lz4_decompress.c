@@ -737,8 +737,27 @@ safe_literal_copy:
 			ip += 2;
 			match = op - offset;
 
-			/* get matchlength */
-			length = token & ML_MASK;
+			/* Necessarily EOF when !partialDecoding.
+			 * When partialDecoding, it is EOF if we've either
+			 * filled the output buffer or
+			 * can't proceed with reading an offset for following match.
+			 */
+			if (!partialDecoding || (cpy == oend) || (ip >= (iend - 2)))
+				break;
+		} else {
+			/* may overwrite up to WILDCOPYLENGTH beyond cpy */
+			LZ4_wildCopy(op, ip, cpy);
+			ip += length;
+			op = cpy;
+		}
+
+		/* get offset */
+		offset = LZ4_readLE16(ip);
+		ip += 2;
+		match = op - offset;
+
+		/* get matchlength */
+		length = token & ML_MASK;
 
 _copy_match:
 			if (length == ML_MASK) {

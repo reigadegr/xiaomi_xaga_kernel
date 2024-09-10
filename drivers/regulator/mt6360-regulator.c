@@ -436,12 +436,173 @@ static const struct linear_range ldo_volt_ranges3[] = {
 	REGULATOR_LINEAR_RANGE(2100000, 0xfa, 0xff, 0),
 };
 
-#define MT6360_LDO_DESC(_name, _id, _vranges, _vcnt, _vreg, _vmask, _enreg, \
-		      _enmask, _ctrlreg, _modesmask, _modegmask, _offon_delay) \
+static const struct linear_range ldo_vout_ranges2[] = {
+	REGULATOR_LINEAR_RANGE(1200000, 0x00, 0x09, 10000),
+	REGULATOR_LINEAR_RANGE(1300000, 0x0a, 0x10, 0),
+	REGULATOR_LINEAR_RANGE(1310000, 0x11, 0x19, 10000),
+	REGULATOR_LINEAR_RANGE(1400000, 0x1a, 0x1f, 0),
+	REGULATOR_LINEAR_RANGE(1500000, 0x20, 0x29, 10000),
+	REGULATOR_LINEAR_RANGE(1600000, 0x2a, 0x2f, 0),
+	REGULATOR_LINEAR_RANGE(1700000, 0x30, 0x39, 10000),
+	REGULATOR_LINEAR_RANGE(1800000, 0x3a, 0x40, 0),
+	REGULATOR_LINEAR_RANGE(1810000, 0x41, 0x49, 10000),
+	REGULATOR_LINEAR_RANGE(1900000, 0x4a, 0x4f, 0),
+	REGULATOR_LINEAR_RANGE(2000000, 0x50, 0x59, 10000),
+	REGULATOR_LINEAR_RANGE(2100000, 0x5a, 0x60, 0),
+	REGULATOR_LINEAR_RANGE(2110000, 0x61, 0x69, 10000),
+	REGULATOR_LINEAR_RANGE(2200000, 0x6a, 0x6f, 0),
+	REGULATOR_LINEAR_RANGE(2500000, 0x70, 0x79, 10000),
+	REGULATOR_LINEAR_RANGE(2600000, 0x7a, 0x7f, 0),
+	REGULATOR_LINEAR_RANGE(2700000, 0x80, 0x89, 10000),
+	REGULATOR_LINEAR_RANGE(2800000, 0x8a, 0x90, 0),
+	REGULATOR_LINEAR_RANGE(2810000, 0x91, 0x99, 10000),
+	REGULATOR_LINEAR_RANGE(2900000, 0x9a, 0xa0, 0),
+	REGULATOR_LINEAR_RANGE(2910000, 0xa1, 0xa9, 10000),
+	REGULATOR_LINEAR_RANGE(3000000, 0xaa, 0xb0, 0),
+	REGULATOR_LINEAR_RANGE(3010000, 0xb1, 0xb9, 10000),
+	REGULATOR_LINEAR_RANGE(3100000, 0xba, 0xc0, 0),
+	REGULATOR_LINEAR_RANGE(3110000, 0xc1, 0xc9, 10000),
+	REGULATOR_LINEAR_RANGE(3200000, 0xca, 0xcf, 0),
+	REGULATOR_LINEAR_RANGE(3300000, 0xd0, 0xd9, 10000),
+	REGULATOR_LINEAR_RANGE(3400000, 0xda, 0xe0, 0),
+	REGULATOR_LINEAR_RANGE(3410000, 0xe1, 0xe9, 10000),
+	REGULATOR_LINEAR_RANGE(3500000, 0xea, 0xf0, 0),
+	REGULATOR_LINEAR_RANGE(3510000, 0xf1, 0xf9, 10000),
+	REGULATOR_LINEAR_RANGE(3600000, 0xfa, 0xff, 0),
+};
+
+static const struct linear_range ldo_vout_ranges3[] = {
+	REGULATOR_LINEAR_RANGE(2700000, 0x00, 0x09, 10000),
+	REGULATOR_LINEAR_RANGE(2800000, 0x0a, 0x10, 0),
+	REGULATOR_LINEAR_RANGE(2810000, 0x11, 0x19, 10000),
+	REGULATOR_LINEAR_RANGE(2900000, 0x1a, 0x20, 0),
+	REGULATOR_LINEAR_RANGE(2910000, 0x21, 0x29, 10000),
+	REGULATOR_LINEAR_RANGE(3000000, 0x2a, 0x30, 0),
+	REGULATOR_LINEAR_RANGE(3010000, 0x31, 0x39, 10000),
+	REGULATOR_LINEAR_RANGE(3100000, 0x3a, 0x40, 0),
+	REGULATOR_LINEAR_RANGE(3110000, 0x41, 0x49, 10000),
+	REGULATOR_LINEAR_RANGE(3200000, 0x4a, 0x4f, 0),
+	REGULATOR_LINEAR_RANGE(3300000, 0x50, 0x59, 10000),
+	REGULATOR_LINEAR_RANGE(3400000, 0x5a, 0x60, 0),
+	REGULATOR_LINEAR_RANGE(3410000, 0x61, 0x69, 10000),
+	REGULATOR_LINEAR_RANGE(3500000, 0x6a, 0x70, 0),
+	REGULATOR_LINEAR_RANGE(3510000, 0x71, 0x79, 10000),
+	REGULATOR_LINEAR_RANGE(3600000, 0x7a, 0x7f, 0),
+};
+
+static int mt6360_regulator_set_mode(struct regulator_dev *rdev,
+				     unsigned int mode)
+{
+	const struct mt6360_regulator_desc *rdesc = (struct mt6360_regulator_desc *)rdev->desc;
+	struct regmap *regmap = rdev_get_regmap(rdev);
+	int shift = ffs(rdesc->mode_mask) - 1;
+	unsigned int val;
+	int ret;
+
+	switch (mode) {
+	case REGULATOR_MODE_NORMAL:
+		val = MT6360_OPMODE_NORMAL;
+		break;
+	case REGULATOR_MODE_STANDBY:
+		val = MT6360_OPMODE_ULP;
+		break;
+	case REGULATOR_MODE_IDLE:
+		val = MT6360_OPMODE_LP;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = regmap_update_bits(regmap, rdesc->mode_reg, rdesc->mode_mask, val << shift);
+	if (ret) {
+		dev_err(&rdev->dev, "%s: fail (%d)\n", __func__, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static unsigned int mt6360_regulator_get_mode(struct regulator_dev *rdev)
+{
+	const struct mt6360_regulator_desc *rdesc = (struct mt6360_regulator_desc *)rdev->desc;
+	struct regmap *regmap = rdev_get_regmap(rdev);
+	int shift = ffs(rdesc->mode_mask) - 1;
+	unsigned int val;
+	int ret;
+
+	ret = regmap_read(regmap, rdesc->mode_reg, &val);
+	if (ret)
+		return ret;
+
+	val &= rdesc->mode_mask;
+	val >>= shift;
+
+	switch (val) {
+	case MT6360_OPMODE_LP:
+		return REGULATOR_MODE_IDLE;
+	case MT6360_OPMODE_ULP:
+		return REGULATOR_MODE_STANDBY;
+	case MT6360_OPMODE_NORMAL:
+		return REGULATOR_MODE_NORMAL;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int mt6360_regulator_get_status(struct regulator_dev *rdev)
+{
+	const struct mt6360_regulator_desc *rdesc = (struct mt6360_regulator_desc *)rdev->desc;
+	struct regmap *regmap = rdev_get_regmap(rdev);
+	unsigned int val;
+	int ret;
+
+	ret = regmap_read(regmap, rdesc->state_reg, &val);
+	if (ret)
+		return ret;
+
+	if (val & rdesc->state_mask)
+		return REGULATOR_STATUS_ON;
+
+	return REGULATOR_STATUS_OFF;
+}
+
+static const struct regulator_ops mt6360_regulator_ops = {
+	.list_voltage = regulator_list_voltage_linear_range,
+	.enable = regulator_enable_regmap,
+	.disable = regulator_disable_regmap,
+	.is_enabled = regulator_is_enabled_regmap,
+	.set_voltage_sel = regulator_set_voltage_sel_regmap,
+	.get_voltage_sel = regulator_get_voltage_sel_regmap,
+	.set_mode = mt6360_regulator_set_mode,
+	.get_mode = mt6360_regulator_get_mode,
+	.get_status = mt6360_regulator_get_status,
+};
+
+static unsigned int mt6360_regulator_of_map_mode(unsigned int hw_mode)
+{
+	switch (hw_mode) {
+	case MT6360_OPMODE_NORMAL:
+		return REGULATOR_MODE_NORMAL;
+	case MT6360_OPMODE_LP:
+		return REGULATOR_MODE_IDLE;
+	case MT6360_OPMODE_ULP:
+		return REGULATOR_MODE_STANDBY;
+	default:
+		return REGULATOR_MODE_INVALID;
+	}
+}
+
+#define MT6360_REGULATOR_DESC(match, _name, _sname, ereg, emask, vreg,	\
+			      vmask, mreg, mmask, streg, stmask,	\
+			      vranges, vcnts, offon_delay, irq_tbls)	\
 {									\
 	.desc = {							\
 		.name = #_name,						\
-		.id =  _id,						\
+		.supply_name = #_sname,					\
+		.id =  MT6360_REGULATOR_##_name,			\
+		.of_match = of_match_ptr(match),			\
+		.regulators_node = of_match_ptr("regulator"),		\
+		.of_map_mode = mt6360_regulator_of_map_mode,		\
 		.owner = THIS_MODULE,					\
 		.ops = &mt6360_ldo_regulator_ops,			\
 		.of_match = of_match_ptr(#_name),			\
@@ -461,19 +622,31 @@ static const struct linear_range ldo_volt_ranges3[] = {
 	.mode_get_mask = _modegmask,					\
 }
 
-static const struct mt6360_regulator_desc mt6360_pmic_descs[] =  {
-	MT6360_PMIC_DESC(BUCK1, 300000, 5000, 201, MT6360_PMIC_BUCK1_VOSEL,
-			 0xff, MT6360_PMIC_BUCK1_EN_CTRL2, 0x40,
-			 MT6360_PMIC_BUCK1_EN_CTRL2, 0x30, 0x03),
-	MT6360_PMIC_DESC(BUCK2, 300000, 5000, 201, MT6360_PMIC_BUCK2_VOSEL,
-			 0xff, MT6360_PMIC_BUCK2_EN_CTRL2, 0x40,
-			 MT6360_PMIC_BUCK2_EN_CTRL2, 0x30, 0x03),
-	MT6360_LDO_DESC(LDO6, MT6360_PMIC_LDO6, ldo_volt_ranges3, 256,
-			MT6360_PMIC_LDO6_CTRL3, 0xff, MT6360_PMIC_LDO6_EN_CTRL2,
-			0x40, MT6360_PMIC_LDO6_EN_CTRL2, 0x30, 0x03, 0),
-	MT6360_LDO_DESC(LDO7, MT6360_PMIC_LDO7, ldo_volt_ranges3, 256,
-			MT6360_PMIC_LDO7_CTRL3, 0xff, MT6360_PMIC_LDO7_EN_CTRL2,
-			0x40, MT6360_PMIC_LDO6_EN_CTRL2, 0x30, 0x03, 0),
+static const struct mt6360_regulator_desc mt6360_regulator_descs[] =  {
+	MT6360_REGULATOR_DESC("buck1", BUCK1, BUCK1_VIN,
+			      0x117, 0x40, 0x110, 0xff, 0x117, 0x30, 0x117, 0x04,
+			      buck_vout_ranges, 256, 0, buck1_irq_tbls),
+	MT6360_REGULATOR_DESC("buck2", BUCK2, BUCK2_VIN,
+			      0x127, 0x40, 0x120, 0xff, 0x127, 0x30, 0x127, 0x04,
+			      buck_vout_ranges, 256, 0, buck2_irq_tbls),
+	MT6360_REGULATOR_DESC("ldo6", LDO6, LDO_VIN3,
+			      0x137, 0x40, 0x13B, 0xff, 0x137, 0x30, 0x137, 0x04,
+			      ldo_vout_ranges1, 256, 0, ldo6_irq_tbls),
+	MT6360_REGULATOR_DESC("ldo7", LDO7, LDO_VIN3,
+			      0x131, 0x40, 0x135, 0xff, 0x131, 0x30, 0x131, 0x04,
+			      ldo_vout_ranges1, 256, 0, ldo7_irq_tbls),
+	MT6360_REGULATOR_DESC("ldo1", LDO1, LDO_VIN1,
+			      0x217, 0x40, 0x21B, 0xff, 0x217, 0x30, 0x217, 0x04,
+			      ldo_vout_ranges2, 256, 0, ldo1_irq_tbls),
+	MT6360_REGULATOR_DESC("ldo2", LDO2, LDO_VIN1,
+			      0x211, 0x40, 0x215, 0xff, 0x211, 0x30, 0x211, 0x04,
+			      ldo_vout_ranges2, 256, 0, ldo2_irq_tbls),
+	MT6360_REGULATOR_DESC("ldo3", LDO3, LDO_VIN1,
+			      0x205, 0x40, 0x209, 0xff, 0x205, 0x30, 0x205, 0x04,
+			      ldo_vout_ranges2, 256, 100, ldo3_irq_tbls),
+	MT6360_REGULATOR_DESC("ldo5", LDO5, LDO_VIN2,
+			      0x20B, 0x40, 0x20F, 0x7f, 0x20B, 0x30, 0x20B, 0x04,
+			      ldo_vout_ranges3, 128, 100, ldo5_irq_tbls),
 };
 
 static const struct mt6360_regulator_desc mt6360_ldo_descs[] =  {

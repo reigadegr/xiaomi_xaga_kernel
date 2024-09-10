@@ -269,14 +269,8 @@ int irq_startup(struct irq_desc *desc, bool resend, bool force)
 			if (d->chip->flags & IRQCHIP_AFFINITY_PRE_STARTUP)
 				irq_setup_affinity(desc);
 			ret = __irq_startup(desc);
-			if (!(d->chip->flags & IRQCHIP_AFFINITY_PRE_STARTUP)) {
-                           if (irqd_has_set(&desc->irq_data, IRQD_PERF_CRITICAL)) {
-                               setup_perf_irq_locked(desc, desc->action->flags);
-                             } else {
-                                     irq_setup_affinity(desc);
-                                    }
-                }
-
+			if (!(d->chip->flags & IRQCHIP_AFFINITY_PRE_STARTUP))
+				irq_setup_affinity(desc);
 			break;
 		case IRQ_STARTUP_MANAGED:
 			irq_do_set_affinity(d, aff, false);
@@ -832,7 +826,7 @@ void handle_edge_irq(struct irq_desc *desc)
 		/*
 		 * When another irq arrived while we were handling
 		 * one, we could have masked the irq.
-		 * Renable it, if it was not disabled in meantime.
+		 * Reenable it, if it was not disabled in meantime.
 		 */
 		if (unlikely(desc->istate & IRQS_PENDING)) {
 			if (!irqd_irq_disabled(&desc->irq_data) &&
@@ -1572,7 +1566,8 @@ int irq_chip_request_resources_parent(struct irq_data *data)
 	if (data->chip->irq_request_resources)
 		return data->chip->irq_request_resources(data);
 
-	return -ENOSYS;
+	/* no error on missing optional irq_chip::irq_request_resources */
+	return 0;
 }
 EXPORT_SYMBOL_GPL(irq_chip_request_resources_parent);
 
